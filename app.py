@@ -3,6 +3,7 @@ from flask_cors import CORS
 from preprocess import preprocess
 import pickle
 import pandas as pd
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -34,9 +35,11 @@ def predictMovement():
         processed_data = preprocess(data_df, data_interval)
 
         # Make prediction
-        prediction = model.predict(processed_data)
+        prediction = int(model.predict(processed_data))
+        action_label = {0: 'Halt', 1: 'Forward', 2: 'Turn'}
+        prediction_label = action_label.get(prediction, 'Unknown')
 
-        return jsonify({"prediction": prediction.tolist()}), 200  # Convert prediction to list for JSON
+        return jsonify({"prediction": prediction, "action": prediction_label}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
