@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)
 
 try:
-    with open('Models/lightGBM-model_v1.pkl', 'rb') as f:
+    with open('Models/lightGBM-model_v2.pkl', 'rb') as f:
         model = pickle.load(f)
 except FileNotFoundError:
     print("Error: Model file 'lightGBM-model_v1.pkl' not found.")
@@ -45,5 +45,9 @@ def predictMovement():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
-    app.run(host='0.0.0.0', port=5000)
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        ssl_context=('localhost+4.pem', 'localhost+4-key.pem'),
+        debug=True
+    )
