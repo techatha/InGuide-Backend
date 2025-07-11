@@ -16,7 +16,7 @@ app.config['SQLALCHEMY_ECHO'] = True
 
 
 try:
-    with open('Models/lightGBM-model_v3.pkl', 'rb') as f:
+    with open('Models/lightGBM-model_v4.pkl', 'rb') as f:
         model = pickle.load(f)
 
 except FileNotFoundError:
