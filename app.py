@@ -2,10 +2,6 @@ from flask import Flask
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, storage, firestore
-# Blueprints
-from blueprints.model import model_bp
-from blueprints.beacon import beacon_bp
-from blueprints.floors import floors_bp
 
 try:
     cred = credentials.Certificate("serviceAccountKey.json")
@@ -21,6 +17,11 @@ bucket = storage.bucket()
 
 app = Flask(__name__)
 CORS(app)
+
+# Blueprints
+from blueprints.model import model_bp
+from blueprints.beacon import beacon_bp
+from blueprints.floors import floors_bp
 
 app.register_blueprint(model_bp, url_prefix='/model')
 app.register_blueprint(beacon_bp, url_prefix='/beacon')
