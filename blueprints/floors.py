@@ -1,10 +1,11 @@
 from flask import Blueprint, request, jsonify
 from app import db, bucket
+from google.cloud.firestore import GeoPoint
 
 floors_bp = Blueprint('floors', __name__)
 
 
-@floors_bp.route('/', methods=['GET'])
+@floors_bp.route('', methods=['GET'])
 def get_all_floor():
     building_id = request.args.get('building_id')
     if not building_id:
@@ -21,7 +22,9 @@ def get_all_floor():
             log_data = doc.to_dict()
             log_data['id'] = doc.id
             floors.append(log_data)
-        return jsonify(floors), 200
+
+        sorted_floors = sorted(floors, key=lambda x: x['floor'])
+        return jsonify(sorted_floors), 200
 
     except Exception as e:
         print(f"An error occurred during query: {e}")
