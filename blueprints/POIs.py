@@ -40,3 +40,37 @@ def get_POIs():
     except Exception as e:
         print(f"An error occurred during query: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@POIs_bp.route('POI', methods=['GET'])
+def get_POI():
+    building_id = request.args.get('building_id')
+    poi_id = request.args.get('poi_id')
+    if not building_id:
+        return jsonify({"error": "Missing 'building_id' query parameter."}), 400
+    if not poi_id:
+        return jsonify({"error": "Missing 'poi_id' query parameter."}), 400
+    if db is None:
+        return jsonify({"error": "Database not initialized."}), 500
+
+    try:
+
+        floor_query = db.collection('buildings').document(building_id).collection('floors')
+        for floor_doc in floor_query.stream():  # Stream docs as they are found
+            poi_doc_ref = floor_doc.reference.collection('POIs').document(poi_id)
+            poi_snapshot = poi_doc_ref.get()
+            if poi_snapshot.exists:
+                query_result = poi_snapshot.to_dict()
+                query_result['id'] = poi_snapshot.id
+                for key, value in query_result.items():
+                    if isinstance(value, GeoPoint):
+                        query_result[key] = [value.latitude, value.longitude]
+                # If a POI is found in this floor, return its data
+                return jsonify(query_result), 200
+
+        # If the loop finishes without finding the POI, it means it doesn't exist under any floor for that building
+        return jsonify({"error": f"Cannot find poi id: {poi_id} for building {building_id}."}), 404
+
+    except Exception as e:
+        print(f"An error occurred during query: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
