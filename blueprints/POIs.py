@@ -30,6 +30,7 @@ def get_POIs():
         for doc in POIs_docs:
             log_data = doc.to_dict()
             log_data['id'] = doc.id
+            log_data['floor'] = floor
             for key, value in log_data.items():
                 if isinstance(value, GeoPoint):
                     log_data[key] = [value.latitude, value.longitude]
@@ -57,11 +58,13 @@ def get_POI():
 
         floor_query = db.collection('buildings').document(building_id).collection('floors')
         for floor_doc in floor_query.stream():  # Stream docs as they are found
+            current_floor = floor_doc.get('floor')
             poi_doc_ref = floor_doc.reference.collection('POIs').document(poi_id)
             poi_snapshot = poi_doc_ref.get()
             if poi_snapshot.exists:
                 query_result = poi_snapshot.to_dict()
                 query_result['id'] = poi_snapshot.id
+                query_result['floor'] = current_floor
                 for key, value in query_result.items():
                     if isinstance(value, GeoPoint):
                         query_result[key] = [value.latitude, value.longitude]
