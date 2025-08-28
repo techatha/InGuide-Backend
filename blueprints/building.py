@@ -71,8 +71,8 @@ def get_building_with_floors(building_id):
         response = {
             'id': building_ref.id,
             'name': building_data.get('name', '< Unnamed Building >'),
-            'NE_bound': building_data.get('NE_bound', '< Unnamed Building >'),
-            'SW_bound': building_data.get('SE_bound', '< Unnamed Building >'),
+            'NE_bound': building_data.get('NE_bound', [0, 0]),
+            'SW_bound': building_data.get('SW_bound', [0, 0]),
             'floors': sorted_floors
         }
         return jsonify(response), 200
