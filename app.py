@@ -1,19 +1,8 @@
 from flask import Flask
 from flask_cors import CORS
-import firebase_admin
-from firebase_admin import credentials, storage, firestore
 
-try:
-    cred = credentials.Certificate("serviceAccountKey.json")
-    firebase_admin.initialize_app(cred, {
-        'storageBucket': 'inguide-se953499.appspot.com'
-    })
-    print("Firebase Admin SDK initialized successfully!")
-except Exception as e:
-    print(f"Error initializing Firebase Admin SDK: {e}")
-
-db = firestore.client()
-bucket = storage.bucket()
+# move firebase init out to avoid circulars
+from firebase_init import db, bucket  # noqa: F401 (ensures they’re initialized)
 
 app = Flask(__name__)
 CORS(app)
@@ -38,5 +27,5 @@ if __name__ == '__main__':
         host='0.0.0.0',
         port=5000,
         ssl_context=('localhost+4.pem', 'localhost+4-key.pem'),
-        debug=True
+        debug=True,
     )

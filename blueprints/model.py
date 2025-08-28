@@ -3,50 +3,40 @@ import pandas as pd
 import numpy as np
 from preprocess import preprocess
 import pickle
+import os
 
 model_bp = Blueprint('model', __name__)
+
+MODEL_PATH = os.path.join('Models', 'lightGBM-model_v4.pkl')
+
 try:
-    with open('Models/lightGBM-model_v4.pkl', 'rb') as f:
+    with open(MODEL_PATH, 'rb') as f:
         model = pickle.load(f)
-
 except FileNotFoundError:
-    print("Error: Model file 'lightGBM-model_v3.pkl' not found.")
+    print(f"Error: Model file '{MODEL_PATH}' not found.")
     model = None
-
 
 @model_bp.route('/predictMovement', methods=['POST'])
 def predictMovement():
     if model is None:
         return jsonify({"error": "Model not loaded. Please check the model file path."}), 500
-
     try:
-        request_payload = request.get_json()
-        if request_payload is None:
+        request_payload = request.get_json(silent=True)
+        if not request_payload:
             return jsonify({"error": "Invalid JSON data provided."}), 400
-
         if 'data' not in request_payload:
             return jsonify({"error": "Missing 'data' array in JSON payload."}), 400
 
-        data_list = request_payload['data']
-        data_df = pd.DataFrame(data_list)
-        data_interval = request_payload.get('interval')
-        processed_data = preprocess(data_df, data_interval)
+        data_df = pd.DataFrame(request_payload['data'])
+        processed = preprocess(data_df, request_payload.get('interval'))
 
-        # Make prediction
-        prob = model.predict_proba(processed_data)[0]
+        prob = model.predict_proba(processed)[0]
         prediction = int(np.argmax(prob))
         action_label = {0: 'Halt', 1: 'Forward', 2: 'Turn'}
-        prediction_label = action_label.get(prediction, 'Unknown')
-
         return jsonify({
             "prediction": prediction,
-            "action": prediction_label,
-            "probability": {
-                "Halt": prob[0],
-                "Forward": prob[1],
-                "Turn": prob[2]
-            }
+            "action": action_label.get(prediction, 'Unknown'),
+            "probability": {"Halt": float(prob[0]), "Forward": float(prob[1]), "Turn": float(prob[2])}
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
