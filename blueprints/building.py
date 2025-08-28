@@ -1,4 +1,6 @@
 from flask import Blueprint, request, jsonify
+from google.cloud.firestore_v1 import GeoPoint
+
 from app import db
 
 building_bp = Blueprint('building', __name__)
@@ -15,6 +17,10 @@ def get_buildings():
         for doc in building_docs:
             building_data = doc.to_dict()
             building_data['id'] = doc.id
+
+            for key, value in building_data.items():
+                if isinstance(value, GeoPoint):
+                    building_data[key] = [value.latitude, value.longitude]
 
             floors_ref = doc.reference.collection('floors')
             floor_docs = list(floors_ref.stream())
@@ -49,6 +55,10 @@ def get_building_with_floors(building_id):
 
         building_data = building_doc.to_dict()
 
+        for key, value in building_data.items():
+            if isinstance(value, GeoPoint):
+                building_data[key] = [value.latitude, value.longitude]
+
         floor_ref = building_ref.collection('floors')
         floor_docs = list(floor_ref.stream())
         floors = []
@@ -61,6 +71,8 @@ def get_building_with_floors(building_id):
         response = {
             'id': building_ref.id,
             'name': building_data.get('name', '< Unnamed Building >'),
+            'NE_bound': building_data.get('NE_bound', '< Unnamed Building >'),
+            'SW_bound': building_data.get('SE_bound', '< Unnamed Building >'),
             'floors': sorted_floors
         }
         return jsonify(response), 200
