@@ -48,7 +48,7 @@ def save_path(building_id, floor_id):
 
     try:
         data = request.get_json()
-        print(data)
+        # print(data)
         nodes_data = data.get('nodes')
         adjacency_list_data = data.get('adjacencyList')
 
