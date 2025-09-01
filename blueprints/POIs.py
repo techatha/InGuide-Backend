@@ -43,49 +43,27 @@ def get_POIs(building_id, floor_id):
 
 
 @POIs_bp.route('/<building_id>/<floor_id>', methods=['POST'])
-def save_POIs(building_id, floor_id):
-    if not building_id:
-        return jsonify({"error": "Missing 'building_id' parameter."}), 400
-    if not floor_id:
-        return jsonify({"error": "Missing 'floor_id' parameter."}), 400
-    if db is None:
-        return jsonify({"error": "Database not initialized."}), 500
-
+def add_poi(building_id, floor_id):
     try:
         data = request.get_json()
-        POIs_data = data.get('pois')
-        if not isinstance(POIs_data, list):
-            return jsonify({"error": "Invalid 'pois' data. Must be a list."}), 400
+        if not data or 'id' not in data:
+            return jsonify({"error": "Each POI must have an 'id'."}), 400
 
-        floor_doc_ref = db.collection('buildings').document(building_id).collection('floors').document(floor_id)
-        floor_doc = floor_doc_ref.get()
+        poi_id = data['id']
+        poi_copy = data.copy()
+        poi_copy.pop('id')
 
-        if not floor_doc.exists:
-            return jsonify({"error": f"Floor '{floor_id}' not found for building '{building_id}'."}), 404
+        if 'location' in poi_copy and isinstance(poi_copy['location'], list) and len(poi_copy['location']) == 2:
+            poi_copy['location'] = GeoPoint(poi_copy['location'][0], poi_copy['location'][1])
 
-        POIs_ref = floor_doc_ref.collection('POIs')
-        batch = db.batch()
+        poi_ref = db.collection('buildings').document(building_id)\
+            .collection('floors').document(floor_id)\
+            .collection('POIs').document(poi_id)
+        poi_ref.set(poi_copy)
 
-        # Clear all existing POIs in the collection
-        for doc in POIs_ref.stream():
-            batch.delete(doc.reference)
-
-        # Add all new POIs from the request
-        for POI in POIs_data:
-            if 'id' not in POI:
-                return jsonify({"error": "Each POI must have an 'id'."}), 400
-
-            poi_id = POI['id']
-            POI_copy = POI.copy()
-            POI_copy.pop('id')  # Remove the ID field before saving
-            if 'location' in POI_copy and isinstance(POI_copy['location'], list) and len(POI_copy['location']) == 2:
-                POI_copy['location'] = GeoPoint(POI_copy['location'][0], POI_copy['location'][1])
-
-            POI_doc_ref = POIs_ref.document(poi_id)
-            batch.set(POI_doc_ref, POI_copy)
-
-        batch.commit()
-        return jsonify({"status": "success", "message": "POIs saved successfully."}), 200
+        return jsonify({"status": "success", "message": f"POI {poi_id} added."}), 201
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
     except Exception as e:
         print(f"An error occurred during query: {e}")
@@ -121,6 +99,22 @@ def update_poi(building_id, floor_id, poi_id):
 
     except Exception as e:
         print(f"Error updating POI: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@POIs_bp.route('/<building_id>/<floor_id>/<poi_id>', methods=['DELETE'])
+def delete_poi(building_id, floor_id, poi_id):
+    try:
+        poi_ref = db.collection('buildings').document(building_id)\
+            .collection('floors').document(floor_id)\
+            .collection('POIs').document(poi_id)
+
+        if not poi_ref.get().exists:
+            return jsonify({"error": f"POI {poi_id} not found"}), 404
+
+        poi_ref.delete()
+        return jsonify({"status": "success", "message": f"POI {poi_id} deleted."}), 200
+    except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
