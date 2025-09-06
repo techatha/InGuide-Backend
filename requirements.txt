@@ -59,3 +59,8 @@ typing_extensions==4.14.0
 tzdata @ file:///croot/python-tzdata_1746123641790/work
 urllib3==2.5.0
 Werkzeug @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_87am5fxnsf/croot/werkzeug_1737448721856/work
+
+flask~=3.1.0
+pandas~=2.2.3
+numpy~=2.2.5
+scipy~=1.15.3
