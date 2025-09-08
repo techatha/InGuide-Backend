@@ -6,7 +6,7 @@ from firebase_admin import credentials, storage, firestore
 try:
     cred = credentials.Certificate("serviceAccountKey.json")
     firebase_admin.initialize_app(cred, {
-        'storageBucket': 'inguide-se953499.appspot.com'
+        'storageBucket': 'inguide-se953499.firebasestorage.app'
     })
     print("Firebase Admin SDK initialized successfully!")
 except Exception as e:
@@ -25,6 +25,7 @@ from blueprints.floors import floors_bp
 from blueprints.POIs import POIs_bp
 from blueprints.building import building_bp
 from blueprints.paths import paths_bp
+from blueprints.image import image_bp
 
 app.register_blueprint(model_bp, url_prefix='/model')
 app.register_blueprint(beacon_bp, url_prefix='/beacon')
@@ -32,6 +33,7 @@ app.register_blueprint(floors_bp, url_prefix='/floors')
 app.register_blueprint(POIs_bp, url_prefix='/POIs')
 app.register_blueprint(building_bp, url_prefix='/buildings')
 app.register_blueprint(paths_bp, url_prefix='/paths')
+app.register_blueprint(image_bp, url_prefix='/uploadImage')
 
 if __name__ == '__main__':
     app.run(
