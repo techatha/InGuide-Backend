@@ -25,34 +25,32 @@ def upload_image():
     return jsonify({"url": blob.public_url})
 
 
-@image_bp.route('/delete-image', methods=['DELETE'])
+@image_bp.route('', methods=['DELETE'])
 def delete_image():
     try:
         data = request.get_json()
-        image_url = data.get("url")
-
-        if not image_url:
+        if not data or "url" not in data:
             return jsonify({"error": "No image URL provided"}), 400
 
-        # Extract filename from Firebase URL
-        # Example: https://firebasestorage.googleapis.com/v0/b/inguide-se953499.appspot.com/o/floorplans%2Fmyimg.png?alt=media
-        match = re.search(r"/o/(.+)\?alt=media", image_url)
+        image_url = data["url"]
+
+        # Adjusted regex for your URL format
+        match = re.search(r"/pois/(.+)", image_url)
         if not match:
             return jsonify({"error": "Invalid Firebase URL"}), 400
 
-        file_path = match.group(1).replace("%2F", "/")  # decode `%2F` → `/`
+        file_path = "pois/" + match.group(1)
 
-        # Get bucket and blob
         blob = bucket.blob(file_path)
 
         if not blob.exists():
             return jsonify({"error": "File not found"}), 404
 
-        # Delete file
         blob.delete()
 
         return jsonify({"message": "File deleted successfully", "path": file_path}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 

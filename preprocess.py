@@ -39,7 +39,12 @@ def compute_frequency_domain(signal, interval):
     fft_values = fft_values[pos_mask]
 
     power = fft_values ** 2
+
+    if np.sum(power) == 0:  # <- guard against all zeros
+        return 0.0, 0.0
+
     return np.sum(frequencies * power) / np.sum(power), frequencies[np.argmax(fft_values)]
+
 
 
 def preprocess(data, data_interval=500):
