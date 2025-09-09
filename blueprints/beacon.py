@@ -1,11 +1,116 @@
+import datetime
 from flask import Blueprint, request, jsonify
 from app import db
-import datetime
+from google.cloud.firestore import GeoPoint
 
-beacon_bp = Blueprint('beacon', __name__)
+beacons_bp = Blueprint('Beacons', __name__)
+
+# --------------------------
+# GET all beacons for a floor
+# --------------------------
+@beacons_bp.route('/<building_id>/<floor_id>', methods=['GET'])
+def get_beacons(building_id, floor_id):
+    if not building_id:
+        return jsonify({"error": "Missing 'building_id' parameter."}), 400
+    if not floor_id:
+        return jsonify({"error": "Missing 'floor_id' parameter."}), 400
+    if db is None:
+        return jsonify({"error": "Database not initialized."}), 500
+
+    try:
+        floor_ref = db.collection('buildings').document(building_id).collection('floors').document(floor_id)
+        if not floor_ref.get().exists:
+            return jsonify({"error": f"Floor '{floor_id}' not found in building '{building_id}'."}), 404
+
+        beacons_ref = floor_ref.collection('beacons')
+        beacon_docs = beacons_ref.stream()
+
+        beacons = []
+        for doc in beacon_docs:
+            beacon_data = doc.to_dict()
+            beacon_data['beaconId'] = doc.id  # Firestore doc id
+            if 'latLng' in beacon_data and isinstance(beacon_data['latLng'], GeoPoint):
+                beacon_data['latLng'] = [beacon_data['latLng'].latitude, beacon_data['latLng'].longitude]
+            beacons.append(beacon_data)
+
+        return jsonify(beacons), 200
+
+    except Exception as e:
+        print(f"Error fetching beacons: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
-@beacon_bp.route('/beaconLog', methods=['GET'])
+# --------------------------
+# ADD beacon
+# --------------------------
+@beacons_bp.route('/<building_id>/<floor_id>', methods=['POST'])
+def add_beacon(building_id, floor_id):
+    try:
+        data = request.get_json()
+        if not data or 'beaconId' not in data or 'latLng' not in data:
+            return jsonify({"error": "Beacon must have 'beaconId' and 'latLng' [lat, lng]."}), 400
+
+        beacon_id = data['beaconId']
+        lat, lng = data['latLng']
+
+        beacon_ref = db.collection('buildings').document(building_id)\
+            .collection('floors').document(floor_id)\
+            .collection('beacons').document(beacon_id)
+
+        beacon_ref.set({
+            "latLng": GeoPoint(lat, lng)
+        })
+
+        return jsonify({"status": "success", "message": f"Beacon {beacon_id} added."}), 201
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# --------------------------
+# UPDATE beacon
+# --------------------------
+@beacons_bp.route('/<building_id>/<floor_id>/<beacon_id>', methods=['PATCH'])
+def update_beacon(building_id, floor_id, beacon_id):
+    try:
+        data = request.get_json()
+        if not data or 'latLng' not in data:
+            return jsonify({"error": "Update requires 'latLng' [lat, lng]."}), 400
+
+        lat, lng = data['latLng']
+        update_data = {"latLng": GeoPoint(lat, lng)}
+
+        beacon_ref = db.collection('buildings').document(building_id)\
+            .collection('floors').document(floor_id)\
+            .collection('beacons').document(beacon_id)
+
+        beacon_ref.update(update_data)
+
+        return jsonify({"status": "success", "message": f"Beacon {beacon_id} updated."}), 200
+    except Exception as e:
+        print(f"Error updating beacon: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# --------------------------
+# DELETE beacon
+# --------------------------
+@beacons_bp.route('/<building_id>/<floor_id>/<beacon_id>', methods=['DELETE'])
+def delete_beacon(building_id, floor_id, beacon_id):
+    try:
+        beacon_ref = db.collection('buildings').document(building_id)\
+            .collection('floors').document(floor_id)\
+            .collection('beacons').document(beacon_id)
+
+        if not beacon_ref.get().exists:
+            return jsonify({"error": f"Beacon {beacon_id} not found"}), 404
+
+        beacon_ref.delete()
+        return jsonify({"status": "success", "message": f"Beacon {beacon_id} deleted."}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@beacons_bp.route('/beaconLog', methods=['GET'])
 def logBeaconData():
     try:
         # Get data from the request arguments
