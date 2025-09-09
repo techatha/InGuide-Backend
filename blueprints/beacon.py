@@ -18,7 +18,8 @@ def get_beacons(building_id, floor_id):
         return jsonify({"error": "Database not initialized."}), 500
 
     try:
-        floor_ref = db.collection('buildings').document(building_id).collection('floors').document(floor_id)
+        floor_ref = db.collection('buildings').document(building_id)\
+            .collection('floors').document(floor_id)
         if not floor_ref.get().exists:
             return jsonify({"error": f"Floor '{floor_id}' not found in building '{building_id}'."}), 404
 
@@ -28,7 +29,8 @@ def get_beacons(building_id, floor_id):
         beacons = []
         for doc in beacon_docs:
             beacon_data = doc.to_dict()
-            beacon_data['beaconId'] = doc.id  # Firestore doc id
+            beacon_data['beaconId'] = doc.id
+            beacon_data['name'] = beacon_data.get('name', '')
             if 'latLng' in beacon_data and isinstance(beacon_data['latLng'], GeoPoint):
                 beacon_data['latLng'] = [beacon_data['latLng'].latitude, beacon_data['latLng'].longitude]
             beacons.append(beacon_data)
@@ -47,10 +49,11 @@ def get_beacons(building_id, floor_id):
 def add_beacon(building_id, floor_id):
     try:
         data = request.get_json()
-        if not data or 'beaconId' not in data or 'latLng' not in data:
-            return jsonify({"error": "Beacon must have 'beaconId' and 'latLng' [lat, lng]."}), 400
+        if not data or 'beaconId' not in data or 'latLng' not in data or 'name' not in data:
+            return jsonify({"error": "Beacon must have 'beaconId', 'name', and 'latLng' [lat, lng]."}), 400
 
         beacon_id = data['beaconId']
+        name = data['name']
         lat, lng = data['latLng']
 
         beacon_ref = db.collection('buildings').document(building_id)\
@@ -58,7 +61,8 @@ def add_beacon(building_id, floor_id):
             .collection('beacons').document(beacon_id)
 
         beacon_ref.set({
-            "latLng": GeoPoint(lat, lng)
+            "latLng": GeoPoint(lat, lng),
+            "name": name
         })
 
         return jsonify({"status": "success", "message": f"Beacon {beacon_id} added."}), 201
@@ -73,15 +77,25 @@ def add_beacon(building_id, floor_id):
 def update_beacon(building_id, floor_id, beacon_id):
     try:
         data = request.get_json()
-        if not data or 'latLng' not in data:
-            return jsonify({"error": "Update requires 'latLng' [lat, lng]."}), 400
+        if not data:
+            return jsonify({"error": "Request body is required."}), 400
 
-        lat, lng = data['latLng']
-        update_data = {"latLng": GeoPoint(lat, lng)}
+        update_data = {}
+        if 'latLng' in data:
+            lat, lng = data['latLng']
+            update_data['latLng'] = GeoPoint(lat, lng)
+        if 'name' in data:
+            update_data['name'] = data['name']
+
+        if not update_data:
+            return jsonify({"error": "Nothing to update. Provide 'latLng' or 'name'."}), 400
 
         beacon_ref = db.collection('buildings').document(building_id)\
             .collection('floors').document(floor_id)\
             .collection('beacons').document(beacon_id)
+
+        if not beacon_ref.get().exists:
+            return jsonify({"error": f"Beacon {beacon_id} not found"}), 404
 
         beacon_ref.update(update_data)
 
@@ -110,31 +124,26 @@ def delete_beacon(building_id, floor_id, beacon_id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+# --------------------------
+# LOG beacon data (GPS logs)
+# --------------------------
 @beacons_bp.route('/beaconLog', methods=['GET'])
 def logBeaconData():
     try:
-        # Get data from the request arguments
         sensor_id = request.args.get('sensorID')
         lat = request.args.get('lat', type=float)
         lon = request.args.get('lon', type=float)
 
-        # Basic validation for required fields
         if not all([sensor_id, lat, lon]):
             return jsonify({"error": "Missing sensorID, lat, or lon"}), 400
 
-        # Create a document reference in the 'gps_logs' collection
-        # Firestore automatically generates a new document ID here
         doc_ref = db.collection('gps_logs').document()
-
-        # Data to be saved in the document
         gps_data = {
             'sensor_id': sensor_id,
             'latitude': lat,
             'longitude': lon,
             'timestamp': datetime.datetime.utcnow()
         }
-
-        # Use the document reference to set the data
         doc_ref.set(gps_data)
 
         return jsonify({"status": "success", "message": "GPS data logged"}), 200
@@ -142,4 +151,3 @@ def logBeaconData():
     except Exception as e:
         print(f"An error occurred: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
