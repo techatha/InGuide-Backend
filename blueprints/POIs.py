@@ -149,3 +149,96 @@ def get_POI(building_id, poi_id):
         print(f"An error occurred during query: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+# ===================== NEW: RECOMMENDED POIs ENDPOINTS =====================
+
+@POIs_bp.route('/<building_id>/<floor_id>/<poi_id>/recommended', methods=['PATCH'])
+def set_recommended(building_id, floor_id, poi_id):
+    """
+    Toggle the 'recommended' flag for a single POI on a floor.
+    Body: {"value": true|false}
+    """
+    try:
+        payload = request.get_json() or {}
+        if 'value' not in payload:
+            return jsonify({"error": "Body must include {'value': true|false}"}), 400
+
+        # Ensure the POI exists first
+        poi_ref = db.collection('buildings').document(building_id) \
+            .collection('floors').document(floor_id) \
+            .collection('POIs').document(poi_id)
+
+        snap = poi_ref.get()
+        if not snap.exists:
+            return jsonify({"error": f"POI {poi_id} not found"}), 404
+
+        poi_ref.update({'recommended': bool(payload['value'])})
+        return jsonify({
+            "status": "success",
+            "message": f"POI {poi_id} recommended = {bool(payload['value'])}"
+        }), 200
+
+    except Exception as e:
+        print(f"Error setting recommended: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@POIs_bp.route('/<building_id>/<floor_id>/recommended', methods=['GET'])
+def list_recommended_on_floor(building_id, floor_id):
+    """
+    List only recommended POIs for a given floor.
+    """
+    try:
+        floor_doc_ref = db.collection('buildings').document(building_id) \
+            .collection('floors').document(floor_id)
+        floor_doc = floor_doc_ref.get()
+
+        if not floor_doc.exists:
+            return jsonify({"error": f"Floor '{floor_id}' not found for building '{building_id}'."}), 404
+
+        pois_ref = floor_doc_ref.collection('POIs')
+        pois_docs = pois_ref.where('recommended', '==', True).stream()
+
+        results = []
+        for doc in pois_docs:
+            poi = doc.to_dict()
+            poi['id'] = doc.id
+            poi['floor'] = floor_doc.get('floor')
+            # convert GeoPoint → [lat, lng] (keep same style as your GET)
+            for k, v in list(poi.items()):
+                if isinstance(v, GeoPoint):
+                    poi[k] = [v.latitude, v.longitude]
+            results.append(poi)
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        print(f"Error listing recommended POIs: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@POIs_bp.route('/<building_id>/recommended', methods=['GET'])
+def list_recommended_in_building(building_id):
+    """
+    (Optional) List recommended POIs across ALL floors in a building.
+    """
+    try:
+        floors_ref = db.collection('buildings').document(building_id).collection('floors')
+        results = []
+
+        for floor_doc in floors_ref.stream():
+            pois_ref = floor_doc.reference.collection('POIs')
+            for poi_doc in pois_ref.where('recommended', '==', True).stream():
+                poi = poi_doc.to_dict()
+                poi['id'] = poi_doc.id
+                poi['floor'] = floor_doc.get('floor')
+                for k, v in list(poi.items()):
+                    if isinstance(v, GeoPoint):
+                        poi[k] = [v.latitude, v.longitude]
+                results.append(poi)
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        print(f"Error listing building recommended POIs: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+# =================== END NEW: RECOMMENDED POIs ENDPOINTS ====================
