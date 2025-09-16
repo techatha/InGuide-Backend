@@ -26,6 +26,7 @@ from blueprints.POIs import POIs_bp
 from blueprints.building import building_bp
 from blueprints.paths import paths_bp
 from blueprints.image import image_bp
+from blueprints.nav_graph import nav_graph_bp
 
 app.register_blueprint(model_bp, url_prefix='/model')
 app.register_blueprint(beacons_bp, url_prefix='/beacon')
@@ -34,6 +35,7 @@ app.register_blueprint(POIs_bp, url_prefix='/POIs')
 app.register_blueprint(building_bp, url_prefix='/buildings')
 app.register_blueprint(paths_bp, url_prefix='/paths')
 app.register_blueprint(image_bp, url_prefix='/uploadImage')
+app.register_blueprint(nav_graph_bp, url_prefix='/navigations')
 
 if __name__ == '__main__':
     app.run(
