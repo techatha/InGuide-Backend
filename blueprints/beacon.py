@@ -5,6 +5,7 @@ from google.cloud.firestore import GeoPoint
 
 beacons_bp = Blueprint('Beacons', __name__)
 
+
 # --------------------------
 # GET all beacons for a floor
 # --------------------------

@@ -90,9 +90,17 @@ def add_building():
         data = request.get_json()
         if 'name' not in data:
             return jsonify({"error": "Missing 'name' field in request body."}), 400
+        if 'NE_bound' not in data:
+            return jsonify({"error": "Missing 'NE_bound' field in request body."}), 400
+        if 'SW_bound' not in data:
+            return jsonify({"error": "Missing 'SW_bound' field in request body."}), 400
 
         building_name = data['name']
-        _, building_ref = db.collection('buildings').add({'name': building_name})
+        _, building_ref = db.collection('buildings').add({
+            'name': building_name,
+            'NE_bound': data['NE_bound'],
+            'SW_bound': data['SW_bound']
+        })
         floor_data = {
             'floor': 1
         }
