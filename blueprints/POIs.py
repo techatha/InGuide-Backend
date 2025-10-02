@@ -151,6 +151,7 @@ def get_POI(building_id, poi_id):
 
 # ===================== NEW: RECOMMENDED POIs ENDPOINTS =====================
 
+
 @POIs_bp.route('/<building_id>/<floor_id>/<poi_id>/recommended', methods=['PATCH'])
 def set_recommended(building_id, floor_id, poi_id):
     """

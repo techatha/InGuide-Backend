@@ -30,7 +30,7 @@ from blueprints.nav_graph import nav_graph_bp
 
 app.register_blueprint(model_bp, url_prefix='/model')
 app.register_blueprint(beacons_bp, url_prefix='/beacon')
-app.register_blueprint(floors_bp, url_prefix='/floors')
+app.register_blueprint(floors_bp, url_prefix='/buildings')
 app.register_blueprint(POIs_bp, url_prefix='/POIs')
 app.register_blueprint(building_bp, url_prefix='/buildings')
 app.register_blueprint(paths_bp, url_prefix='/paths')
@@ -40,7 +40,7 @@ app.register_blueprint(nav_graph_bp, url_prefix='/navigations')
 if __name__ == '__main__':
     app.run(
         host='0.0.0.0',
-        port=5000,
+        port=8080,
         ssl_context=('localhost+4.pem', 'localhost+4-key.pem'),
         debug=True
     )
