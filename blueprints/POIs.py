@@ -5,6 +5,39 @@ from google.cloud.firestore import GeoPoint
 POIs_bp = Blueprint('POIs', __name__)
 
 
+@POIs_bp.route('/<building_id>', methods=['GET'])
+def get_building_POIs(building_id):
+    if not building_id:
+        return jsonify({"error": "Missing 'building_id' parameter."}), 400
+    if db is None:
+        return jsonify({"error": "Database not initialized."}), 500
+
+    try:
+        # Correctly get the floor document
+        floors_ref = db.collection('buildings').document(building_id).collection('floors')
+        floor_docs = floors_ref.stream()
+
+        POIs = []
+        for floor_doc in floor_docs:
+            poi_ref = floor_doc.reference.collection('POIs')
+            poi_docs = poi_ref.stream()
+
+            for poi_doc in poi_docs:
+                poi_data = poi_doc.to_dict()
+                poi_data['id'] = poi_doc.id
+                poi_data['floor'] = floor_doc.get('floor')  # Use the floor_doc
+                for key, value in poi_data.items():
+                    if isinstance(value, GeoPoint):
+                        poi_data[key] = [value.latitude, value.longitude]
+                POIs.append(poi_data)
+
+        return jsonify(POIs), 200
+
+    except Exception as e:
+        print(f"An error occurred during query: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @POIs_bp.route('/<building_id>/<floor_id>', methods=['GET'])
 def get_POIs(building_id, floor_id):
     if not building_id:
