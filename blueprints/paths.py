@@ -27,7 +27,10 @@ def get_path(building_id, floor_id):
             # Populate the nodes list
             path_data["nodes"].append({
                 "id": node_id,
-                "coordinates": [node_data['coordinates'].latitude, node_data['coordinates'].longitude]
+                "coordinates": [node_data['coordinates'].latitude, node_data['coordinates'].longitude],
+                # --- FIX: Read the portalGroup property ---
+                # Use .get() to safely handle nodes that don't have it
+                "portalGroup": node_data.get('portalGroup', None)
             })
 
             # Populate the adjacency list
@@ -48,7 +51,6 @@ def save_path(building_id, floor_id):
 
     try:
         data = request.get_json()
-        # print(data)
         nodes_data = data.get('nodes')
         adjacency_list_data = data.get('adjacencyList')
 
@@ -60,20 +62,22 @@ def save_path(building_id, floor_id):
 
         batch = db.batch()
 
-        # Step 1: Delete all existing nodes to ensure a clean slate
-        # This is a critical step because you're sending the full graph
+        # Step 1: Delete all existing nodes (this is correct)
         for doc in nodes_ref.stream():
             batch.delete(doc.reference)
 
-        # Step 2: Add the new nodes with their nested adjacency lists
+        # Step 2: Add the new nodes
         for node in nodes_data:
-            # Get the adjacency list for the current node from the incoming data
             node_adjacencies = adjacency_list_data.get(node['id'], [])
-
             node_doc_ref = nodes_ref.document(node['id'])
+
+            # --- FIX: Correct Python syntax ---
+            # Use node.get('portalGroup', None)
+            # This is the Python equivalent of node.portalGroup || null
             node_doc_data = {
                 'coordinates': GeoPoint(node['coordinates'][0], node['coordinates'][1]),
                 'adjacencyList': node_adjacencies,
+                'portalGroup': node.get('portalGroup', None)  # <-- Corrected line
             }
             batch.set(node_doc_ref, node_doc_data)
 
@@ -84,4 +88,3 @@ def save_path(building_id, floor_id):
     except Exception as e:
         print(f"An error occurred during path save: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
