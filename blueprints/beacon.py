@@ -7,7 +7,7 @@ beacons_bp = Blueprint('Beacons', __name__)
 
 
 # --------------------------
-# GET all beacons for a floor
+# GET all beacons for a SINGLE floor (MODIFIED)
 # --------------------------
 @beacons_bp.route('/<building_id>/<floor_id>', methods=['GET'])
 def get_beacons(building_id, floor_id):
@@ -19,10 +19,15 @@ def get_beacons(building_id, floor_id):
         return jsonify({"error": "Database not initialized."}), 500
 
     try:
-        floor_ref = db.collection('buildings').document(building_id)\
+        floor_ref = db.collection('buildings').document(building_id) \
             .collection('floors').document(floor_id)
-        if not floor_ref.get().exists:
+        floor_doc = floor_ref.get()  # Get the floor document itself
+
+        if not floor_doc.exists:
             return jsonify({"error": f"Floor '{floor_id}' not found in building '{building_id}'."}), 404
+
+        floor_data = floor_doc.to_dict()
+        floor_number = floor_data.get('floor')  # Get the floor number
 
         beacons_ref = floor_ref.collection('beacons')
         beacon_docs = beacons_ref.stream()
@@ -34,12 +39,61 @@ def get_beacons(building_id, floor_id):
             beacon_data['name'] = beacon_data.get('name', '')
             if 'latLng' in beacon_data and isinstance(beacon_data['latLng'], GeoPoint):
                 beacon_data['latLng'] = [beacon_data['latLng'].latitude, beacon_data['latLng'].longitude]
+
+            # --- ADD FLOOR NUMBER ---
+            beacon_data['floorNumber'] = floor_number  # Add the floor number
+            # --- END ADD ---
+
             beacons.append(beacon_data)
 
         return jsonify(beacons), 200
 
     except Exception as e:
         print(f"Error fetching beacons: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# --------------------------
+# GET ALL beacons for a BUILDING (NEW ENDPOINT)
+# --------------------------
+@beacons_bp.route('/<building_id>/all_beacons', methods=['GET'])
+def get_all_building_beacons(building_id):
+    if not building_id:
+        return jsonify({"error": "Missing 'building_id' parameter."}), 400
+    if db is None:
+        return jsonify({"error": "Database not initialized."}), 500
+
+    try:
+        all_beacons = []
+        floors_ref = db.collection('buildings').document(building_id).collection('floors')
+        all_floor_docs = floors_ref.stream()
+
+        for floor_doc in all_floor_docs:
+            floor_data = floor_doc.to_dict()
+            floor_id = floor_doc.id
+            floor_number = floor_data.get('floor')  # Get floor number
+
+            # Get beacons for this specific floor
+            beacons_ref = floor_doc.reference.collection('beacons')
+            beacon_docs = beacons_ref.stream()
+
+            for beacon_doc in beacon_docs:
+                beacon_data = beacon_doc.to_dict()
+                beacon_data['beaconId'] = beacon_doc.id
+                beacon_data['name'] = beacon_data.get('name', '')
+                if 'latLng' in beacon_data and isinstance(beacon_data['latLng'], GeoPoint):
+                    beacon_data['latLng'] = [beacon_data['latLng'].latitude, beacon_data['latLng'].longitude]
+
+                # --- ADD FLOOR NUMBER ---
+                beacon_data['floorNumber'] = floor_number  # Add the floor number
+                # --- END ADD ---
+
+                all_beacons.append(beacon_data)
+
+        return jsonify(all_beacons), 200
+
+    except Exception as e:
+        print(f"Error fetching all building beacons: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
