@@ -54,8 +54,8 @@ def save_path(building_id, floor_id):
         nodes_data = data.get('nodes')
         adjacency_list_data = data.get('adjacencyList')
 
-        if not all([nodes_data, adjacency_list_data]):
-            return jsonify({"error": "Missing required data."}), 400
+        if nodes_data is None or adjacency_list_data is None:
+            return jsonify({"error": "Missing required data keys 'nodes' or 'adjacencyList'."}), 400
 
         nodes_ref = db.collection('buildings').document(building_id).collection('floors').document(floor_id).collection(
             'path_nodes')
