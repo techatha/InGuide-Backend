@@ -208,14 +208,10 @@ def logBeaconData():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-# --------------------------
-# *** NEW ENDPOINT ***
-# GET building info from beacon ID
-# --------------------------
 @beacons_bp.route('/<beacon_id>/get_buildingId', methods=['GET'])
 def get_beacon_info(beacon_id):
     """
-    Finds a beacon by its ID (as a field) across all buildings
+    Finds a beacon by its document ID across all buildings/floors
     and returns the buildingId it belongs to.
     """
     if not beacon_id:
@@ -224,26 +220,20 @@ def get_beacon_info(beacon_id):
         return jsonify({"error": "Database not initialized."}), 500
 
     try:
-        # Use a collection group query to find the beacon
-        beacons_ref = db.collection_group('beacons').where('beaconId', '==', beacon_id).limit(1)
+        # Use collection group to find a document with this ID
+        beacons_ref = db.collection_group('beacons')
         beacon_docs = beacons_ref.stream()
 
-        # Get the first (and only) result
-        doc = next(beacon_docs, None)
+        for doc in beacon_docs:
+            if doc.id == beacon_id:
+                # Path example: buildings/{buildingId}/floors/{floorId}/beacons/{beaconId}
+                path_parts = doc.reference.path.split('/')
+                if len(path_parts) >= 2 and path_parts[0] == 'buildings':
+                    building_id = path_parts[1]
+                    return jsonify({"buildingId": building_id}), 200
 
-        if not doc:
-            return jsonify({"error": f"Beacon '{beacon_id}' not found."}), 404
-
-        # Get the document's path
-        # e.g., "buildings/m0Jhe7OPU45kdGvKLZ0D/floors/floor_1/beacons/B101"
-        path_parts = doc.reference.path.split('/')
-
-        # Extract the buildingId (which is the 2nd part of the path)
-        if len(path_parts) >= 2 and path_parts[0] == 'buildings':
-            building_id = path_parts[1]
-            return jsonify({"buildingId": building_id}), 200
-        else:
-            return jsonify({"error": "Invalid document path structure in database."}), 500
+        # If not found
+        return jsonify({"error": f"Beacon '{beacon_id}' not found."}), 404
 
     except Exception as e:
         print(f"Error fetching beacon info: {e}")
